@@ -80,4 +80,4 @@ Kartenkacheln © OpenStreetMap-Mitwirkende, © CARTO.
 **Live:** https://silvanm.github.io/channel-swim-swarm/
 
 ---
-Stand: 2026-10-26 · SHA: wird nach dem ersten Commit nachgetragen
+Stand: 2026-10-26 · SHA: 159d468
