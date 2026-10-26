@@ -1,0 +1,29 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: venv anlegen und Abhaengigkeiten installieren
+    cmds:
+      - uv venv .venv
+      - uv pip install --python .venv/bin/python -e .
+
+  fetch:
+    desc: 'Liste + Track-CSVs von cspf.co.uk laden (gecacht). Bsp: task fetch -- --year 2025'
+    cmds:
+      - .venv/bin/swim-tracks fetch {{.CLI_ARGS}}
+
+  build:
+    desc: 'Tracks zuschneiden und web/data/tracks_<jahr>.json schreiben'
+    cmds:
+      - .venv/bin/swim-tracks build {{.CLI_ARGS}}
+
+  og:
+    desc: Share-Bild web/og.png (2400x1260) aus der Seite mit ?og rendern
+    cmds:
+      - .venv/bin/swim-tracks og
+
+  serve:
+    desc: Karte lokal ausliefern (http://localhost:8643)
+    dir: web
+    cmds:
+      - python3 -m http.server 8643

@@ -1,0 +1,7 @@
+.venv/
+.history/
+.omc/
+.DS_Store
+.claudine/
+__pycache__/
+data/raw/

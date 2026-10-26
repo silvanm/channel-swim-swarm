@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La Manche 2026 — Swarm</title>
+<meta name="description" content="Every CS&PF and CSA English Channel crossing of 2026 as an animated swarm on the map, aligned by start or by tidal phase.">
+
+<!-- Open Graph / link previews. og:image must be an absolute URL; the file is
+     2400x1260 (2x the 1200x630 target), rendered by `task og` from this page
+     with ?og. After changing any of this, re-scrape at
+     https://developers.facebook.com/tools/debug/ — Facebook caches for days. -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://silvanm.github.io/channel-swim-swarm/">
+<meta property="og:title" content="La Manche 2026 — every Channel crossing as one swarm">
+<meta property="og:description" content="257 successful English Channel crossings of 2026, CS&amp;PF and CSA, replayed together from the pilot boats' AIS tracks. Start them all at once or by the tide, then pick out a single swim.">
+<meta property="og:image" content="https://silvanm.github.io/channel-swim-swarm/og.png">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1260">
+<meta property="og:image:alt" content="257 pilot-boat tracks from Dover to the French coast, coloured by association, fanning out with the tide.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="La Manche 2026 — every Channel crossing as one swarm">
+<meta name="twitter:image" content="https://silvanm.github.io/channel-swim-swarm/og.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root {
+  --bg: #0a1220;
+  --panel: #0d1728;
+  --panel2: #101d33;
+  --line: #1d2c47;
+  --ink: #e8edf7;
+  --muted: #8fa3c4;
+  --accent: #ff6b4a;
+  --tide: #4fc3e8;
+  --cream: #f2e9d8;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  display: flex;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+
+/* ---------- side panel ---------- */
+aside {
+  width: 380px;
+  min-width: 380px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1200px 500px at -30% -10%, rgba(79,195,232,0.07), transparent 60%),
+    var(--panel);
+  border-right: 1px solid var(--line);
+}
+.top { padding: 22px 22px 0; }
+header h1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1.05;
+}
+header h1 em { color: var(--accent); font-style: normal; }
+header .sub {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-top: 7px;
+}
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.stats .cell { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.stats .k { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.stats .v { font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px; margin-top: 2px; }
+
+section { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+section > h2 {
+  font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px; font-weight: 500;
+}
+.seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; margin-bottom: 10px; }
+.seg button {
+  flex: 1; background: transparent; border: 0; padding: 7px 4px; font-size: 11px; color: var(--muted);
+  border-right: 1px solid var(--line);
+}
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--panel2); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+.row { display: flex; align-items: center; gap: 10px; font-size: 10px; color: var(--muted); margin-bottom: 10px; }
+.row .lbl { width: 62px; letter-spacing: 0.1em; text-transform: uppercase; flex: none; }
+.row .seg { flex: 1; margin: 0; }
+
+/* duration strip: one tick per swim, also a picker */
+#strip { width: 100%; height: 58px; display: block; cursor: pointer; }
+.stripcap { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* swim list */
+.listhead { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+#q {
+  flex: 1; background: var(--panel2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font: inherit; font-size: 12px;
+}
+#q::placeholder { color: var(--muted); }
+#sort { background: var(--panel2); color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; font-size: 11px; }
+.listwrap { flex: 1; min-height: 0; overflow-y: auto; padding: 0 22px 18px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+#list { list-style: none; padding: 0; }
+#list li {
+  display: grid; grid-template-columns: 8px 1fr auto; gap: 4px 10px; align-items: center;
+  padding: 7px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent;
+}
+#list li:hover { background: var(--panel2); }
+#list li.sel { background: var(--panel2); border-color: var(--accent); }
+#list li.done .nm { color: var(--muted); }
+#list .dot { width: 8px; height: 8px; border-radius: 50%; }
+#list .nm { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#list .nm small { color: var(--muted); font-size: 10px; }
+#list .tm { font-size: 11px; color: var(--muted); text-align: right; }
+#list .meta { grid-column: 2 / 4; font-size: 10px; color: var(--muted); margin-top: -3px; }
+.empty { color: var(--muted); font-size: 11px; padding: 10px 8px; }
+
+footer { padding: 10px 22px 14px; border-top: 1px solid var(--line); font-size: 9.5px; color: var(--muted); line-height: 1.6; }
+footer a { color: var(--muted); }
+footer .credits { margin-top: 6px; color: var(--ink); }
+footer .credits a { color: var(--ink); text-decoration-color: var(--accent); text-underline-offset: 2px; }
+
+/* ---------- ?og: share-card render (task og) ---------- */
+.ogcard { display: none; }
+body.og aside, body.og .bar, body.og .clock, body.og #card, body.og .leaflet-control-container { display: none !important; }
+body.og .ogcard {
+  display: block; position: absolute; z-index: 700; left: 56px; top: 0; bottom: 0; width: 470px;
+  padding-top: 96px; pointer-events: none;
+}
+body.og main::before {
+  content: ''; position: absolute; inset: 0; z-index: 650; pointer-events: none;
+  background: linear-gradient(90deg, rgba(10,18,32,0.96) 0%, rgba(10,18,32,0.88) 34%, rgba(10,18,32,0) 50%);
+}
+.ogcard .eyebrow { font-size: 15px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+.ogcard h1 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 84px; line-height: 0.98; margin-top: 14px; }
+.ogcard h1 em { color: var(--accent); font-style: normal; }
+.ogcard p { font-size: 21px; line-height: 1.45; margin-top: 22px; color: var(--cream); }
+.ogcard .legend { display: flex; gap: 26px; margin-top: 30px; font-size: 16px; color: var(--muted); }
+.ogcard .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 9px; vertical-align: -1px; }
+
+/* ---------- map ---------- */
+main { flex: 1; position: relative; height: 100vh; min-width: 0; }
+#map { position: absolute; inset: 0; background: var(--bg); }
+#swarm { position: absolute; inset: 0; pointer-events: none; z-index: 450; }
+.leaflet-container { font: inherit; background: var(--bg); }
+.leaflet-control-attribution { background: rgba(10,18,32,0.7) !important; color: var(--muted) !important; font-size: 9px !important; }
+.leaflet-control-attribution a { color: var(--muted) !important; }
+.leaflet-bar a { background: var(--panel) !important; color: var(--ink) !important; border-color: var(--line) !important; }
+
+.place {
+  background: transparent; border: none; box-shadow: none; padding: 0;
+  color: var(--cream); font-family: 'IBM Plex Mono', monospace; font-size: 10px; opacity: 0.75;
+}
+.place::before { display: none; }
+
+#tip {
+  position: absolute; z-index: 700; pointer-events: none; display: none;
+  background: rgba(13,23,40,0.94); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 9px; font-size: 11px; white-space: nowrap;
+}
+#tip small { color: var(--muted); }
+
+/* clock overlay */
+.clock {
+  position: absolute; top: 18px; left: 18px; z-index: 600; pointer-events: none;
+  background: rgba(10,18,32,0.78); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; backdrop-filter: blur(4px);
+}
+.clock .k { font-size: 9.5px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+#clock { font-family: 'Fraunces', serif; font-weight: 600; font-size: 34px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+#clocksub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+#clocksub b { color: var(--ink); font-weight: 500; }
+
+/* focus card */
+#card {
+  position: absolute; top: 18px; right: 58px; z-index: 600; width: 300px; display: none;
+  background: linear-gradient(160deg, rgba(16,29,51,0.96), rgba(40,22,26,0.94));
+  border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+}
+#card .close { position: absolute; top: 8px; right: 10px; background: none; border: 0; color: var(--muted); font-size: 16px; }
+#card .kind { font-size: 9.5px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+#card h3 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 21px; line-height: 1.15; margin: 3px 22px 2px 0; }
+#card .who { font-size: 10.5px; color: var(--muted); line-height: 1.45; margin: 2px 0 4px; }
+#card .time { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; color: var(--accent); }
+#card .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px; margin-top: 10px; }
+#card .grid .k { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+#card .grid .v { font-size: 12px; margin-top: 1px; }
+#card .warn { margin-top: 10px; font-size: 10px; color: #f0c674; }
+#card .actions { display: flex; gap: 8px; margin-top: 12px; }
+#card .actions button {
+  flex: 1; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 6px; font-size: 11px;
+}
+#card .actions button.on { border-color: var(--accent); color: var(--accent); }
+
+/* time bar */
+.bar {
+  position: absolute; left: 18px; right: 18px; bottom: 22px; z-index: 600;
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(10,18,32,0.82); border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 14px; backdrop-filter: blur(4px);
+}
+.bar button.ic {
+  background: var(--accent); border: 0; color: var(--bg); width: 34px; height: 34px; border-radius: 50%;
+  font-size: 14px; flex: none; display: grid; place-items: center;
+}
+.bar button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+#scrub { flex: 1; -webkit-appearance: none; appearance: none; height: 22px; background: transparent; cursor: pointer; }
+#scrub::-webkit-slider-runnable-track { height: 3px; background: var(--line); border-radius: 2px; }
+#scrub::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--bg); margin-top: -6px; box-shadow: 0 0 0 1px var(--accent);
+}
+#scrub::-moz-range-track { height: 3px; background: var(--line); }
+#scrub::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
+#speed { background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; font-size: 11px; }
+#barlabel { font-size: 11px; color: var(--muted); min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 820px) {
+  body { flex-direction: column-reverse; }
+  aside { width: 100%; min-width: 0; height: 46vh; border-right: 0; border-top: 1px solid var(--line); }
+  main { height: 54vh; }
+  .top { padding: 14px 16px 0; }
+  header h1 { font-size: 22px; }
+  .stats { display: none; }
+  .listwrap { padding: 0 16px 12px; }
+  footer { padding: 6px 16px 8px; font-size: 0; }
+  footer .credits { margin: 0; font-size: 10px; }
+  #card { left: 12px; right: 12px; width: auto; top: auto; bottom: 76px; }
+  .clock { top: 10px; left: 10px; padding: 6px 10px; }
+  #clock { font-size: 24px; }
+  .bar { left: 10px; right: 10px; bottom: 10px; gap: 8px; padding: 6px 10px; }
+  #barlabel { display: none; }
+}
+</style>
+</head>
+<body>
+<aside>
+  <div class="top">
+    <header>
+      <h1>La Manche <em>2026</em></h1>
+      <div class="sub">Every CS&amp;PF and CSA crossing as a swarm</div>
+    </header>
+    <div class="stats">
+      <div class="cell"><div class="k">Crossings</div><div class="v" id="nAll">–</div></div>
+      <div class="cell"><div class="k">Solo</div><div class="v" id="nSolo">–</div></div>
+      <div class="cell"><div class="k">Relays</div><div class="v" id="nRelay">–</div></div>
+    </div>
+
+    <section>
+      <h2>Display</h2>
+      <div class="row"><span class="lbl">Start</span>
+        <div class="seg" id="align">
+          <button data-v="start" class="on" title="Everyone starts together at T+0">together</button>
+          <button data-v="hw" title="Each swim starts at its tidal phase relative to high water Dover">by tide</button>
+        </div>
+      </div>
+      <div class="row"><span class="lbl">Body</span>
+        <div class="seg" id="org">
+          <button data-v="all" class="on">both</button>
+          <button data-v="cspf" title="Channel Swimming &amp; Piloting Federation">CS&amp;PF</button>
+          <button data-v="csa" title="Channel Swimming Association">CSA</button>
+        </div>
+      </div>
+      <div class="row"><span class="lbl">Show</span>
+        <div class="seg" id="kind">
+          <button data-v="all" class="on">all</button>
+          <button data-v="solo">Solo</button>
+          <button data-v="relay">Relay</button>
+        </div>
+      </div>
+      <div class="row"><span class="lbl">Colour</span>
+        <div class="seg" id="color">
+          <button data-v="dur" class="on">Time</button>
+          <button data-v="boat">Boat</button>
+          <button data-v="spring">Tides</button>
+          <button data-v="org">Body</button>
+        </div>
+      </div>
+      <canvas id="strip"></canvas>
+      <div class="stripcap"><span id="capL"></span><span id="capM"></span><span id="capR"></span></div>
+    </section>
+
+    <section style="padding-bottom: 8px;">
+      <h2>Crossings</h2>
+      <div class="listhead">
+        <input id="q" type="search" placeholder="Name, boat, pilot, country …" autocomplete="off">
+        <select id="sort" aria-label="Sort">
+          <option value="date">Date</option>
+          <option value="time">Time</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+    </section>
+  </div>
+  <div class="listwrap"><ul id="list"></ul></div>
+  <footer>
+    Data: pilot-boat AIS positions from <a href="https://cspf.co.uk/cs-and-pf-swims" target="_blank" rel="noopener">CS&amp;PF</a>
+    (every 20 min) and <a href="https://www.channelswimmingassociation.com/swims" target="_blank" rel="noopener">CSA</a> (every 10 min). The track is the boat, not the swimmer. Times are unofficial until ratified.
+    High water Dover from the simulator's tide model.
+    <div class="credits">Credits: <a href="https://www.instagram.com/smuehlemann/" target="_blank" rel="noopener">Silvan Mühlemann</a>, Claude</div>
+  </footer>
+</aside>
+
+<main>
+  <div id="map"></div>
+  <canvas id="swarm"></canvas>
+  <div id="tip"></div>
+  <div class="ogcard" id="ogcard"></div>
+
+  <div class="clock">
+    <div class="k" id="clockk">Since start</div>
+    <div id="clock">0:00</div>
+    <div id="clocksub"></div>
+  </div>
+
+  <div id="card"></div>
+
+  <div class="bar">
+    <button class="ic" id="play" aria-label="Play">▶</button>
+    <button class="ic ghost" id="rew" aria-label="Back to start">↺</button>
+    <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Time">
+    <span id="barlabel"></span>
+    <select id="speed" aria-label="Speed">
+      <option value="0.5">½ h/s</option>
+      <option value="1" selected>1 h/s</option>
+      <option value="2">2 h/s</option>
+      <option value="4">4 h/s</option>
+    </select>
+  </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js?v=8"></script>
+</body>
+</html>

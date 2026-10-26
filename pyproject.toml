@@ -1,0 +1,21 @@
+[project]
+name = "swim-tracks"
+version = "0.1.0"
+description = "Laedt die AIS-Tracks aller CS&PF-Kanalquerungen eines Jahres und bereitet sie fuer die Kartenanimation auf"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12",
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "playwright>=1.50",
+]
+
+[project.scripts]
+swim-tracks = "swim_tracks.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/swim_tracks"]
